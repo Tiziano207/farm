@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
     int queue_size = QUEUE_SIZE;
     int opt;
     char * dir_name = NULL;
-    //queue_init(&queue, queue_size);
+    
     while ((opt = getopt(argc, argv, "n:q:t:d:")) != -1) {
         switch (opt) {
             case 'n':
