@@ -3,7 +3,7 @@ CFLAGS = -Wall -pedantic
 LDFLAGS = -L./lib
 LIBDIR = lib
 
-.PHONY: clear	exe build test clean memcheck
+.PHONY: clear	exe build test 
 
 # $@	:	nome del target
 # $^	:	dependency list
@@ -45,10 +45,6 @@ exe	:
 test :
 	./test.sh
 
-memcheck :
-	valgrind --leak-check=full --track-origins=yes ./farm_main  -n 2 -q 1 file1.dat file2.dat -d testdir
-clean	:
-	-rm -f *.sck
 
 clear	:
 	@echo "Removing garbage"
