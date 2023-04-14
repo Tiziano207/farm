@@ -8,7 +8,6 @@
 #include "./lib/signal_installer.h"
 #include "./lib/collector.h"
 #include "./lib/generic.h"
-#include "./lib/worker.h"
 #include "./lib/master_worker.h"
 
 #define MAX_QUEUE_SIZE 30
@@ -19,16 +18,17 @@
 
 int t_delay;
 struct sockaddr_un sa;
-volatile sig_atomic_t queue_interrupt = 0;
-
+int fd_signal_thread;
+int sig_term_received = 0;
 
 int main(int argc, char *argv[]) {
-    signal_installer();
+    /**
+     * Eseguo la funzione getopt per poter catturare tutti i parametri da linea di comando
+     */
     int num_workers = 1;
     int queue_size = QUEUE_SIZE;
     int opt;
     char * dir_name = NULL;
-    //queue_init(&queue, queue_size);
     while ((opt = getopt(argc, argv, "n:q:t:d:")) != -1) {
         switch (opt) {
             case 'n':
@@ -54,13 +54,41 @@ int main(int argc, char *argv[]) {
 
     strncpy(sa.sun_path, SOCK_NAME, SOCK_NAME_LENGTH);
     sa.sun_family=AF_UNIX;
+
+    /*
+    * Blocco tutti i segnali creando una maschera
+    */
+    sigset_t mask = signal_mask();
+    if(pthread_sigmask(SIG_BLOCK, &mask, NULL) != 0){perror("pthread_sigmask"); exit(EXIT_FAILURE);}
+    /**
+     * Creo il thread che si occuperà di ricevere i segnali e gestirgli opportunamente
+     */
+    pthread_t signal_thread;
+    Pthread_create(&signal_thread, NULL, signal_thread_handler, &mask);
+    /**
+     * Esseguo la fork per creare i due processi: MasterWorker e Collector. Essi erediteranno la maschera sui
+     * segnali. L'unico che potraà ricevere segnali quindi sarà il signal_thread tramite la sigwait()
+    */
     int pid, status;
     SYSCALL(pid, fork(), "fork");
-
-    if (pid == 0){ collector(&sa); }
+    if (pid == 0){ collector(&sa);}
     master_worker(argc, argv, dir_name, optind, num_workers, queue_size);
-
+    /**
+     * pthread_cancel risulta essere inevitabile poiché il thread potrebbe essere bloccato sulla funzione sigwait()
+     * in attesa di segnali, d'altra parte l'uscita dal thread è oppurtunamente gestita da una funzione di cleanup
+     * che si occupa della chiusura della connessione al Collector
+     */
+    pthread_cancel(signal_thread);
+    /**
+     * Attendo la chiusura del signal_thread
+     */
+    Pthread_join(signal_thread, NULL);
     waitpid(pid, &status, 0);
-
+    /**
+     * Rimuovo la maschera dai segnali e termino
+     */
+    int r;
+    SYSCALL(r,sigemptyset(&mask),"sigemptyset");
+    SYSCALL(r,pthread_sigmask(SIG_SETMASK,&mask,NULL), "pthread_sigmask");
     return 0;
 }

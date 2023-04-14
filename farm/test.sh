@@ -5,7 +5,7 @@ then
     echo "Compilare generafile, eseguibile mancante!";
     exit 1
 fi
-if [ ! -e farm ];
+if [ ! -e farm_main ];
 then
     echo "Compilare farm, eseguibile mancante!"
     exit 1
@@ -55,15 +55,14 @@ mkdir -p testdir/testdir2
 mv file111.dat file150.dat testdir/testdir2
 
 # esecuzione con 2 thread e coda lunga 1
-./farm -n 2 -q 1 file* -d testdir | grep "file*" | awk '{print $1,$2}' | diff - expected.txt
+./farm_main -n 2 -q 1 file* -d testdir | grep "file*" | awk '{print $1,$2}' | diff - expected.txt
 if [[ $? != 0 ]]; then
     echo "test1 failed"
 else
     echo "test1 passed"
 fi
-
 # esecuzione con 8 thread e coda lunga 16
-./farm -d testdir -n 8 -q 16 file* | grep "file*" | awk '{print $1,$2}' | diff - expected.txt
+./farm_main -d testdir -n 8 -q 16 file* | grep "file*" | awk '{print $1,$2}' | diff - expected.txt
 if [[ $? != 0 ]]; then
     echo "test2 failed"
 else
@@ -73,11 +72,11 @@ fi
 #
 # esecuzione "rallentata" con 1 thread, dopo circa 5 secondi viene
 # inviato il segnale SIGTERM (comando pkill) e si valuta l'exit status
-# 
-./farm -n 1 -d testdir -q 1 -t 1000 file* 2>&1 > /dev/null &
+#
+./farm_main -n 1 -d testdir -q 1 -t 1000 file* 2>&1 > /dev/null &
 pid=$!
 sleep 5
-pkill farm
+pkill farm_main
 wait $pid
 if [[ $? != 0 ]]; then
     echo "test3 failed"
@@ -87,10 +86,10 @@ fi
 
 
 #
-# esecuzione con valgrind. Se valgrind trova dei problemi esce con 
+# esecuzione con valgrind. Se valgrind trova dei problemi esce con
 # exit status 1.
 #
-valgrind --error-exitcode=1 --log-file=/dev/null ./farm -d testdir file* 2>&1 > /dev/null
+valgrind --error-exitcode=1 --log-file=/dev/null ./farm_main -d testdir file* 2>&1 > /dev/null
 if [[ $? != 0 ]]; then
     echo "test4 failed"
 else
@@ -98,7 +97,7 @@ else
 fi
 
 # verifica di memory leaks
-valgrind --leak-check=full --error-exitcode=1 --log-file=/dev/null ./farm file* -d testdir 2>&1 > /dev/null
+valgrind --leak-check=full --error-exitcode=1 --log-file=/dev/null ./farm_main file* -d testdir 2>&1 > /dev/null
 if [[ $? != 0 ]]; then
     echo "test5 failed"
 else

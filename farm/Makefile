@@ -40,7 +40,7 @@ farm_main.o	:	farm_main.c
 	$(CC) $(CFLAGS) -c farm_main.c
 
 exe	:
-	./farm_main  -n 2 -q 1 file1.dat file2.dat -d testdir
+	./farm_main  -n 2 -q 1  -t 1000 file1.dat file2.dat -d testdir
 
 test :
 	./test.sh

@@ -18,9 +18,12 @@ extern struct sockaddr_un sa;
 extern pthread_mutex_t lock;
 extern int fd_c;
 
-
+    /**
+     * Funzione che si occupa di mandare un messaggio su una determinata connessione già aperta,
+     * dopo aver mandato il messaggio la funzione attende la recezione del messaggio ACK che conferma
+     * la recezione del messaggio da parte del processo COllector.
+     */
 int sendCollector(char* message, int fd_skt){
-
     pthread_mutex_lock(&lock);
     int n;
     int r;
@@ -29,13 +32,16 @@ int sendCollector(char* message, int fd_skt){
     SYSCALL(r,write(fd_skt,message,strlen(message)), "write");
 
     SYSCALL(n, read(fd_skt, response, (sizeof(char) * 5)), "read");
-    if(strncmp(response,"ACK", 5) != 0){ printf("OH NO SOMETHING GOES WRONG\n");pthread_mutex_unlock(&lock);return 0;}
+    if(strncmp(response,"ACK", 5) != 0){ printf("Something goes wrong\n");pthread_mutex_unlock(&lock);return 0;}
     free(response);
 
     pthread_mutex_unlock(&lock);  //unlock
     return 1;
 }
 
+    /**
+     * Funzione che preso un array di numeri calcola il risultato
+     */
 long long calculateResult( long long *nums, int n) {
     long long  result = 0.0;
     for (int i = 0; i < n; i++) {
@@ -44,6 +50,10 @@ long long calculateResult( long long *nums, int n) {
     return result;
 }
 
+    /**
+     * Funzione che si occupa di leggere il contenuto dei file e riempire
+     * l'array che verrà passato a calculateResult per calcolare il risultato
+     */
 size_t read_file_contents(const char* filename) {
     long long *array;
     FILE* fp = fopen(filename, "rb");
@@ -72,12 +82,20 @@ size_t read_file_contents(const char* filename) {
     free(array);
     return result;
 }
+    /**
+     * Funzione che viene usata dal thread, Il Thread dopo aver ottenuto la lock
+     * della coda concorrente, acquisirà un nome di un file attraverso la funzione
+     * dequeue calcolerà il risultato e poi lo invierà al processo Collector,
+     * acquisendo la variabile globale fd_c, per poter utilizzare la connessione
+     * stabilita precedentemene dal Master Worker
+    */
 void *worker(void *args) {
     _queue *q = (_queue *) args;
     //ora il worker ha il nome del file
     while (1) {
         char * file  = malloc(MAX_FILENAME_LENGTH * sizeof (char));
         if(file == NULL){perror("malloc");exit(errno);}
+
         if(dequeue(q, file) == 1 ){
             free(file);
             return (void *) NULL;
@@ -101,7 +119,7 @@ void *worker(void *args) {
         if(sendCollector(message,fd_c) == 0){pthread_exit((void *) 1);}
         free(file);
         free(message);
-        sleep(t_delay);
+        sleep(t_delay  * 0.001);
     }
 
 }
