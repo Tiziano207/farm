@@ -139,7 +139,7 @@ void collector(struct sockaddr_un *psa) {
     int nread, r;
     Node *head = NULL;
 
-    SYSCALL(master_socket, socket(AF_UNIX, SOCK_STREAM, 0), "socket")
+    SYSCALL(master_socket, socket(AF_UNIX, SOCK_STREAM, 0), "socket");
     SYSCALL(r, bind(master_socket, (struct sockaddr *) psa, sizeof(*psa)), "bind");
     SYSCALL(r, listen(master_socket, SOMAXCONN), "listen");
 
